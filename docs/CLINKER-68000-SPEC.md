@@ -1,6 +1,4 @@
-# CLINKER 68000 Workstation — Spec Sheet (Draft v0.1)
-
-----
+# Clinker 68000 — Spec Sheet (Draft v0.2)
 
 Not a real HP 9836. Loosely derived from it — CPU/RAM/display class match, everything else is free to diverge where it makes emulation easier.
 
@@ -9,12 +7,13 @@ Not a real HP 9836. Loosely derived from it — CPU/RAM/display class match, eve
 | Subsystem | Spec |
 |---|---|
 | CPU | Motorola 68000, 8 MHz (matches HP 9836 reference) |
-| RAM | 512 KB stock, expandable to 2.5 MB |
+| RAM | 16 MB stock (68000's full 24-bit address space, no expansion needed) |
 | Display | 80×25 monochrome text mode |
 | Storage | 10-bay 5.25" floppy array |
 | SCSI | "T-38" port + controller |
 | Serial | RS-232 |
 | Parallel | Centronics |
+| MIDI | Onboard synthesis — standalone playback, no external synth required |
 
 ## 2. Everything Else — Novel / Free Choice
 
@@ -23,7 +22,7 @@ Bus topology, disk encoding, SCSI/display/keyboard controller chips, connector t
 ## 3. CPU & Memory
 
 - **CPU:** MC68000 @ 8 MHz, 16-bit external bus, no MMU (period-correct — the real 9836 didn't ship with one either).
-- **RAM:** Flat address space, 512 KB stock / 2.5 MB max, bank-switched or linearly mapped — your call, doesn't affect emulation difficulty much either way.
+- **RAM:** Flat address space, 16 MB stock — the 68000's full 24-bit address bus (2^24 = 16,777,216 bytes), populated from day one, no expansion slots needed. Caveat: that 16 MB is the *entire* address space, not RAM's exclusive share — display buffer, ROM, and every memory-mapped I/O register (FDC, NCR 5380, ACIA/OPL2, CRTC) also live somewhere in that same 24-bit range. Actual usable contiguous RAM is 16 MB minus whatever you carve out for those. Worth deciding your address map before treating 16 MB as the literal RAM figure — one plausible period-correct approach: map RAM low, I/O registers high (top of the space), so software sees one big contiguous block up front.
 - **Bus:** Novel. Simplest path: treat everything as memory-mapped I/O on the 68000's own address/data bus rather than modeling a real backplane (VMEbus-style) — you don't need card-slot mechanics for an emulator, just address decode ranges. Saves you from emulating bus arbitration you don't need.
 
 ## 4. Display
@@ -56,7 +55,16 @@ Confirmed the HP reference machines actually did have a rotary knob (an RPG — 
 - **Keyboard protocol:** A simple synchronous serial scan-code link — same shape as the IBM PC/XT keyboard protocol (clock + data, scan codes on make/break) or the classic Mac/Apple keyboard link. Either is a two-wire shift-register protocol, dead simple to emulate.
 - **Wheel:** Piggyback it on the same serial link as a second packet type (relative delta bytes, like a period serial mouse) rather than giving it a fully separate port. Keeps you at one keyboard device to emulate instead of two. If you'd rather it be fully independent (e.g., its own mini-UART on the RS-232 controller), that's also easy — just a design preference call.
 
-## 9. Emulation Notes (suggestions only, not implementation)
+## 9. MIDI (Onboard Synthesis)
+
+Decided: **Option B** — self-contained playback, not just a data pipe to external gear.
+
+- **I/O layer:** Dual 6850 ACIA, one IN one OUT/THRU — same approach the Atari ST used. Nearly free to add, and gives you MIDI THRU to real external gear as a side effect even though it's not the primary playback path. Fixed 31.25 kbaud, 8-N-1 — no need for cycle-accurate UART timing in emulation, model it as a byte queue at a fixed rate.
+- **Synthesis:** Yamaha OPL2-class FM chip. Well-documented, period-correct for mid-80s, and FM synthesis emulation is a solved problem with existing reference cores to study rather than build from scratch.
+- **Driver:** Small onboard routine consumes incoming MIDI messages (Note On/Off, Program Change, etc. — either live over the ACIA or read from a stored sequence) and maps them to OPL2 register writes (operator/envelope/feedback settings per voice).
+- **Emulation split:** ACIA side is trivial (byte queue, fixed rate). OPL2 side is the real work — you're emulating an actual synthesis engine (operators, envelopes, feedback loops), not just data transport. Budget more time here than anywhere else in the audio path.
+
+## 10. Emulation Notes (suggestions only, not implementation)
 
 - 68000 core, FDC, CRTC, NCR 5380, and PC/XT-style keyboard protocol all have existing open reference implementations/docs you can study before writing your own Rust versions — none of this is unexplored territory.
 - The novel pieces (drive-select expander, bus glue) are small enough to spec as a handful of memory-mapped registers each — shouldn't balloon your address-decode logic.
