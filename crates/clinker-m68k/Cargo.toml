@@ -1,0 +1,13 @@
+[package]
+name = "clinker-m68k"
+description = "MC68000 CPU core for the Clinker 68000 emulator. No I/O; drives a Bus trait."
+version = "0.0.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

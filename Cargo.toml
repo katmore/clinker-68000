@@ -1,0 +1,26 @@
+# Clinker 68000 — emulator core workspace.
+#
+# Layout rationale: see docs/ARCHITECTURE.md. In short:
+#   clinker-m68k   — the CPU. Knows nothing about this machine; talks to a Bus trait.
+#   clinker-core   — the machine. Owns the 24-bit address map and (later) peripherals,
+#                    and is the surface the GTK front end will drive.
+#
+# Peripherals, bus glue, and the FFI/front-end boundary are deliberately NOT here yet
+# (see "Scope" in docs/ARCHITECTURE.md).
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/clinker-m68k",
+    "crates/clinker-core",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.98"
+license = "MIT"
+repository = "https://github.com/acks/clinker-68000"
+
+[workspace.lints.clippy]
+# The CPU core does a lot of deliberate bit-twiddling; keep the noise down.
+unreadable_literal = "allow"

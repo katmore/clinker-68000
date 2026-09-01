@@ -22,8 +22,24 @@ Bus topology, disk encoding, SCSI/display/keyboard controller chips, connector t
 ## 3. CPU & Memory
 
 - **CPU:** MC68000 @ 8 MHz, 16-bit external bus, no MMU (period-correct — the real 9836 didn't ship with one either).
-- **RAM:** Flat address space, 16 MB stock — the 68000's full 24-bit address bus (2^24 = 16,777,216 bytes), populated from day one, no expansion slots needed. Caveat: that 16 MB is the *entire* address space, not RAM's exclusive share — display buffer, ROM, and every memory-mapped I/O register (FDC, NCR 5380, ACIA/OPL2, CRTC) also live somewhere in that same 24-bit range. Actual usable contiguous RAM is 16 MB minus whatever you carve out for those. Worth deciding your address map before treating 16 MB as the literal RAM figure — one plausible period-correct approach: map RAM low, I/O registers high (top of the space), so software sees one big contiguous block up front.
-- **Bus:** Novel. Simplest path: treat everything as memory-mapped I/O on the 68000's own address/data bus rather than modeling a real backplane (VMEbus-style) — you don't need card-slot mechanics for an emulator, just address decode ranges. Saves you from emulating bus arbitration you don't need.
+- **RAM:** Flat address space, 16 MB stock — the 68000's full 24-bit address bus (2^24 = 16,777,216 bytes), populated from day one, no expansion slots needed. All 16 MB of RAM is physically present; I/O and ROM simply win the address decode where they overlap it, so a sliver of RAM at the top of the space is unreachable. That is not "lost" capacity in any meaningful sense (~1.5%) and does not change the "16 MB stock" figure.
+
+### 3.1 Address map (decided)
+
+RAM low, everything else in the top 256 KB. Contiguous user RAM: **15.75 MB** (`$000000`–`$FBFFFF`).
+
+| Range | Size | Contents |
+|---|---|---|
+| `$000000`–`$FBFFFF` | 15.75 MB | Main RAM. Exception vector table lives at `$000000`. |
+| `$FC0000`–`$FDFFFF` | 128 KB | Boot / monitor ROM. *(Size provisional — see Open Questions.)* |
+| `$FE0000`–`$FEFFFF` | 64 KB | Text display buffer + MC6845-style CRTC registers. |
+| `$FF0000`–`$FFFFFF` | 64 KB | Memory-mapped I/O: FDC + drive-select expander, NCR 5380, 68681 DUART, Centronics, dual 6850 ACIA, OPL2, keyboard/wheel link. Detailed register layout TBD. |
+
+**Reset overlay:** the 68000 reads its initial SSP and PC from `$000000`–`$000007`, which is RAM (indeterminate at power-on). On reset the boot ROM is therefore *also* aliased at `$000000`. Early boot code copies the vector table into low RAM and then clears the overlay via a bit in a system-control register in the I/O page, after which `$000000` is ordinary RAM. (Same technique as the Amiga / Atari ST / Mac.)
+
+**Display buffer:** dedicated static RAM inside the display window, not a reserved slice of main RAM — matches how MC6845 character-mode cards worked and keeps display access off the main-RAM timing path.
+
+- **Bus:** Novel. Everything is memory-mapped on the 68000's own address/data bus — no backplane, no card slots, just address-decode ranges (table above). No bus arbitration modelled (no DMA masters other than, later, the FDC — which will be handled as a coarse CPU stall, not full bus sharing).
 
 ## 4. Display
 
@@ -64,13 +80,50 @@ Decided: **Option B** — self-contained playback, not just a data pipe to exter
 - **Driver:** Small onboard routine consumes incoming MIDI messages (Note On/Off, Program Change, etc. — either live over the ACIA or read from a stored sequence) and maps them to OPL2 register writes (operator/envelope/feedback settings per voice).
 - **Emulation split:** ACIA side is trivial (byte queue, fixed rate). OPL2 side is the real work — you're emulating an actual synthesis engine (operators, envelopes, feedback loops), not just data transport. Budget more time here than anywhere else in the audio path.
 
-## 10. Emulation Notes (suggestions only, not implementation)
+## 10. Emulation Notes
 
-- 68000 core, FDC, CRTC, NCR 5380, and PC/XT-style keyboard protocol all have existing open reference implementations/docs you can study before writing your own Rust versions — none of this is unexplored territory.
-- The novel pieces (drive-select expander, bus glue) are small enough to spec as a handful of memory-mapped registers each — shouldn't balloon your address-decode logic.
-- GTK C++ front end just needs to talk to the Rust core for: framebuffer/text buffer read, keyboard/wheel packet injection, floppy image mount per bay, SCSI image mount. Clean boundary.
+### 10.1 Timing fidelity (decided)
+
+Target: **clock-driven core with accurate per-instruction cycle totals.** Bus accesses
+tick a shared clock and the execution engine is re-entrant, but the 68000's prefetch
+queue (IRC/IR/IRD) is *not* modelled yet. Per-instruction cycle counts follow the
+Motorola figures / yacht.txt; interrupts are sampled at instruction boundaries.
+
+Full cycle-exact + prefetch remains a possible later upgrade — it is additive on top
+of the clock-driven design, not a rewrite — but is only worth doing if a specific
+piece of software (disk copy-protection, a CPU-speed-calibrated delay loop) is shown
+to need it. The text-mode display, command-driven FDC, and fixed-rate MIDI byte queue
+do not.
+
+### 10.2 Exception model (decided)
+
+- MC68000 (not 010/020): groups 1 & 2 push the **6-byte frame** (SR word + PC long,
+  no format word).
+- Bus error / address error (group 0) push the 68000's **14-byte frame**, filled
+  **diagnostic-grade**: fault address, R/W and function-code bits accurate; the
+  undocumented internal-state bits zeroed. Because the machine has **no MMU**, these
+  exceptions are a fatal path (handler diagnoses and reboots) — clean instruction
+  restart after bus error is *not* a goal (the 68000 hardware can't do it reliably
+  either).
+- Exception priority / simultaneity logic lands with interrupts, not before.
+
+### 10.3 Reference implementations
+
+68000 core, FDC, CRTC, NCR 5380, and the PC/XT-style keyboard protocol all have open
+reference implementations/docs to study before writing the Rust versions. See
+`docs/ARCHITECTURE.md` for the specific list and how each is used. No third-party
+code is vendored.
+
+### 10.4 Front-end boundary
+
+GTK C++ front end (separate repo) talks to the Rust core for exactly: text-buffer +
+cursor read, keyboard/wheel packet injection, floppy image mount per bay (0–9), SCSI
+(T-38) image mount, and stepping the machine. Keeping that list short is a constraint.
 
 ## Open Questions / Unverified Assumptions
 
 - **68000 clock speed** — assumed 8 MHz to match the HP 9836 reference exactly, since you listed CPU as a hard constraint. If clock speed itself is flexible and only the CPU family is hard, that opens up performance headroom.
 - **Wheel packet routing** — assumed piggybacking on the keyboard link is fine per your "keep it simple" ask. If the wheel needs to be independently hot-pluggable or separately addressable in software, it should get its own UART channel instead.
+- **Boot ROM size / contents** — map (§3.1) provisionally reserves 128 KB at `$FC0000`. Depends on whether BASIC (or whatever the primary language/OS is) is resident in ROM or loaded from floppy like the HP 9836's "BASIC Workstation" disc. If resident, ROM grows to 256–512 KB and the map shifts down. Blocks nothing until we write/import firmware.
+- **I/O register layout** — the `$FF0000`–`$FFFFFF` page is allocated as a block; the per-chip register offsets within it (FDC, 5380, DUART, Centronics, ACIA ×2, OPL2, keyboard, system-control/overlay) are not assigned yet. Needed before the first peripheral.
+- **System-control register** — the reset-overlay-clear bit needs a home (address + bit position) in the I/O page. Part of the I/O layout question above.
