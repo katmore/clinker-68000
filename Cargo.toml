@@ -18,7 +18,7 @@ members = [
 [workspace.package]
 edition = "2021"
 rust-version = "1.98"
-license = "MIT"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/acks/clinker-68000"
 
 [workspace.lints.clippy]

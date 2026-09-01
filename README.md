@@ -30,4 +30,14 @@ See [docs/CLINKER-68000-SPEC.md](docs/CLINKER-68000-SPEC.md)
      - Note: ships with the above mentioned **Clinker MIDI Organizer Software**
      - Note: design specs in development
  - Front-end for full-stack emulation experience: not yet implemented
+
+## License
+
+Copyright 2026 D.B.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE) for the full text.
+
 # clinker-6502
