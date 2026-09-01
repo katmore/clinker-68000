@@ -17,7 +17,8 @@ Introducing the Clinker 68000, a workstation.
 See [docs/CLINKER-68000-SPEC.md](docs/CLINKER-68000-SPEC.md)
 
 ## Emulation
- - Emulator: not yet implemented
+ - Emulator
+   - Note: in development
  - Supported Software
    - **Clinker MIDI Player**
      - Note: in development
