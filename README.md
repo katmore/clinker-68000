@@ -8,7 +8,7 @@ Introducing the Clinker 68000, a workstation.
  - keyboard
  - wheel toggle interface
  - 10-bay 5.25" floppy array
- - Introducing - the "T38 SCSI" interface
+ - Introducing the "T38 SCSI" interface* - Clinker's own DB25 pinout interface!
  - multiple RS232 Ports
  - Centronics printer port
  - built-in MIDI playback capability
