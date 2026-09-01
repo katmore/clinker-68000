@@ -38,10 +38,10 @@ Bus topology, disk encoding, SCSI/display/keyboard controller chips, connector t
 
 ## 6. SCSI — "T-38" Port
 
-I couldn't find "T-38" as a standard historical SCSI designation — treating it as your project's internal name for this port unless you meant something specific (a connector type, a mil-spec designator?). Flagging that as an assumption below.
+"T-38" is Clinker's own designation — a proprietary DB25 pinout for the SCSI port (not a historical/industry standard).
 
 - **Controller:** NCR 5380 — the most period-correct, well-documented, and already-emulated SCSI controller chip of the era (Mac Plus, Amiga 2000, early Sun gear all used it or a close variant). Good existing reference implementations to build your Rust core against.
-- Physical connector doesn't matter for emulation purposes — pick whatever's convenient for your mental model (DB-25, Centronics-50, whatever "T-38" is naming).
+- **Connector:** DB25, Clinker-proprietary pinout (not standard SCSI-1 DB25, which reused Mac-style signal assignments) — worth documenting the pin assignment explicitly once you get to it, since "DB25" alone won't tell future-you or anyone else which signals live where.
 
 ## 7. Serial / Parallel
 
@@ -72,6 +72,5 @@ Decided: **Option B** — self-contained playback, not just a data pipe to exter
 
 ## Open Questions / Unverified Assumptions
 
-- **"T-38"** — assumed to be your own internal label for the SCSI port, not a historical standard I should recognize. If you meant a specific connector or spec, that changes the physical-layer section (not the controller-chip choice).
 - **68000 clock speed** — assumed 8 MHz to match the HP 9836 reference exactly, since you listed CPU as a hard constraint. If clock speed itself is flexible and only the CPU family is hard, that opens up performance headroom.
 - **Wheel packet routing** — assumed piggybacking on the keyboard link is fine per your "keep it simple" ask. If the wheel needs to be independently hot-pluggable or separately addressable in software, it should get its own UART channel instead.
