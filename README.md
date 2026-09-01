@@ -13,7 +13,7 @@ Introducing the Clinker 68000, a workstation.
  - Centronics printer port
  - built-in MIDI playback capability
 
-## Full Specs
+## Technical Specifications
 See [docs/CLINKER-68000-SPEC.md](docs/CLINKER-68000-SPEC.md)
 
 ## Emulation
