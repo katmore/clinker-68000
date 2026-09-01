@@ -26,7 +26,7 @@ See [docs/CLINKER-68000-SPEC.md](docs/CLINKER-68000-SPEC.md)
      - Note: in development
  - Supported peripherals:
    - Any required for the *Primary Features* listed above
-   - T38 Dongle/Mode-Toggle-Box
+   - Clinker MIDI Organizer T38 Dongle/Mode-Toggle-Box
      - Note: ships with the above mentioned **Clinker MIDI Organizer Software**
      - Note: design specs in development
  - Front-end for full-stack emulation experience: not yet implemented
