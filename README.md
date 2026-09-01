@@ -1,6 +1,6 @@
 # Clinker 68000 
 
-Introducing the Clinker 68000, a workstation.
+Introducing the Clinker 68000, a workstation. The successor to the [Clinker 6502](https://github.com/katmore/clinker-6502)
 
 ## Primary Features
  - Motorola 68000 8Mhz
