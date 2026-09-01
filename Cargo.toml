@@ -19,7 +19,7 @@ members = [
 edition = "2021"
 rust-version = "1.98"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/acks/clinker-68000"
+repository = "https://github.com/katmore/clinker-68000"
 
 [workspace.lints.clippy]
 # The CPU core does a lot of deliberate bit-twiddling; keep the noise down.
